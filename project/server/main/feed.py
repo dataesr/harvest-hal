@@ -8,12 +8,12 @@ import json
 
 from project.server.main.logger import get_logger
 from project.server.main.utils_swift import upload_object
-from project.server.main.parse import parse_hal, get_aurehal_struct
-from project.server.main.aurehal_structures import harvest_and_save_struct
+from project.server.main.parse import parse_hal, get_aurehal_from_OS
+from project.server.main.aurehal import harvest_and_save_aurehal
 
 logger = get_logger(__name__)
 
-def save_data(data, collection_name, year, chunk_index, aurehal_struct):
+def save_data(data, collection_name, year, chunk_index, aurehal):
 
     # 1. save raw data to OS
     current_file = f'hal_{year}_{chunk_index}.json'
@@ -24,7 +24,7 @@ def save_data(data, collection_name, year, chunk_index, aurehal_struct):
 
     # 2.transform data and save in mongo
     current_file_parsed = f'hal_parsed_{year}_{chunk_index}.json'
-    data_parsed = [parse_hal(e, aurehal_struct) for e in data]
+    data_parsed = [parse_hal(e, aurehal, collection_name) for e in data]
     json.dump(data_parsed, open(current_file_parsed, 'w'))
     insert_data(collection_name, current_file_parsed)
     os.system(f'gzip {current_file_parsed}')
@@ -33,18 +33,24 @@ def save_data(data, collection_name, year, chunk_index, aurehal_struct):
 
 def harvest_and_insert(collection_name):
     # 1. save aurehal structures
-    harvest_and_save_struct(collection_name)
+    aurehal = {}
+    for ref in ['structure', 'author']:
+        harvest_and_save_aurehal(collection_name, ref)
+        aurehal[ref] = get_aurehal_from_OS(collection_name, ref)
 
-    aurehal_struct = get_aurehal_struct(collection_name)
+    # 2. drop mongo 
+    logger.debug(f'dropping {collection_name} collection before insertion')
+    myclient = pymongo.MongoClient('mongodb://mongo:27017/')
+    myclient['hal'][collection_name].drop()
 
-    # 2. save publications
+    # 3. save publications
     year_start = 2012
     year_end = datetime.date.today().year
     year_end = 2012
     for year in range(year_start, year_end + 1):
-         harvest_and_insert_one_year(collection_name, year, aurehal_struct)
+         harvest_and_insert_one_year(collection_name, year, aurehal)
 
-def harvest_and_insert_one_year(collection_name, year, aurehal_struct):
+def harvest_and_insert_one_year(collection_name, year, aurehal):
 
     # todo save by chunk
     nb_rows = 250
@@ -63,11 +69,13 @@ def harvest_and_insert_one_year(collection_name, year, aurehal_struct):
         data += res['response']['docs']
         
         if len(data) > MAX_DATA_SIZE:
-            save_data(data, collection_name, year, chunk_index, aurehal_struct)
+            save_data(data, collection_name, year, chunk_index, aurehal)
             data = []
             chunk_index += 1
 
         if new_cursor == cursor:
+            if data:
+                save_data(data, collection_name, year, chunk_index, aurehal)
             break
         cursor = new_cursor
 

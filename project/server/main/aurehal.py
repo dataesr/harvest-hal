@@ -10,12 +10,12 @@ for c in list(pycountry.countries):
     country_code = c.alpha_2.lower()
     country_code_to_name[country_code] = c.name
 
-def get_aurehal_struct():
+def get_aurehal(aurehal_type):
     nb_rows = 10000
     cursor='*'
     data = []
     while True:
-        url = f'https://api.archives-ouvertes.fr/ref/structure/?q=*:*&wt=json&fl=*&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
+        url = f'https://api.archives-ouvertes.fr/ref/{aurehal_type}/?q=*:*&wt=json&fl=*&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
         r = requests.get(url)
         res = r.json()
         new_cursor = quote_plus(res['nextCursorMark'])
@@ -25,7 +25,44 @@ def get_aurehal_struct():
         cursor = new_cursor
     return data
 
-def parse_affiliation(elt):
+def parse_aurehal(elt, aurehal_type):
+    if aurehal_type == 'structure':
+        return parse_structure(elt)
+    elif aurehal == 'author':
+        return parse_author(elt)
+
+def parse_author(elt):
+    author = {}
+    author['hal_docid'] = str(elt['docid'])
+    
+    if isinstance(elt.get('firstName_s'), str):
+        author['first_name'] = elt.get('firstName_s').strip()
+        
+    if isinstance(elt.get('lastName_s'), str):
+        author['last_name'] = elt.get('lastName_s').strip()
+        
+    if author.get('first_name') and author.get('last_name'):
+        author['full_name'] = f"{author.get('first_name')} {author.get('last_name')}"
+    elif isinstance(elt.get('fullName_s'), str):
+        author['full_name'] = elt.get('fullName_s')
+        
+    if isinstance(elt.get('idHal_i'), int) and elt.get('idHal_i') > 0:
+        author['id_hal_i'] = str(elt.get('idHal_i'))
+    if isinstance(elt.get('idHal_s'), str):
+        author['id_hal_s'] = elt.get('idHal_s')
+        
+    if isinstance(elt.get('emailDomain_s'), str):
+        author['email_domain'] = elt.get('emailDomain_s').strip()
+        
+    if isinstance(elt.get('idref_id'), str):
+        author['idref'] = elt.get('idref_id').strip()
+        
+    if isinstance(elt.get('orcid_id'), str):
+        author['orcid'] = elt.get('orcid_id').strip()
+    
+    return author
+
+def parse_structure(elt):
     affiliation = {}
     affiliation_name = ''
     country = None
@@ -45,7 +82,7 @@ def parse_affiliation(elt):
         affiliation_name += country
 
     affiliation['name'] = affiliation_name
-    affiliation['hal_docid'] = elt['docid']
+    affiliation['hal_docid'] = str(elt['docid'])
     if country:
         affiliation['country'] = country
 
@@ -59,30 +96,30 @@ def parse_affiliation(elt):
         affiliation['ror'] = elt.get('ror_s')[0]
     return affiliation
 
-def create_docid_struct_map(data):
-    docid_struct_map = {}
+def create_docid_map(data, aurehal_type):
+    docid_map = {}
     parsed_data = []
     for d in data:
         docids = [d['docid']]
         if isinstance(d.get('aliasDocid_i'), list):
             docids += d.get('aliasDocid_i')
         docids = list(set(docids))
-        parsed_affiliation = parse_affiliation(d)
-        parsed_data.append(parsed_affiliation)
+        parsed_elt = parse_aurehal(d, aurehal_type)
+        parsed_data.append(parsed_elt)
         for docid in docids:
-            docid_struct_map[docid] = parsed_affiliation
-    return parsed_data, docid_struct_map
+            docid_map[str(docid)] = parsed_elt
+    return parsed_data, docid_map
 
-def harvest_and_save_struct(collection_name):
-    data = get_aurehal_struct()
-    parsed_data, docid_struct_map = create_docid_struct_map(data)
-    current_file = f'aurehal_structures.json'
+def harvest_and_save_aurehal(collection_name, aurehal_type):
+    data = get_aurehal(aurehal_type)
+    parsed_data, docid_map = create_docid_map(data, aurehal_type)
+    current_file = f'aurehal_{aurehal_type}.json'
     json.dump(parsed_data, open(current_file, 'w'))
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
     
-    current_file = f'aurehal_structures_dict.json'
+    current_file = f'aurehal_{aurehal_type}_dict.json'
     json.dump(docid_struct_map, open(current_file, 'w'))
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
