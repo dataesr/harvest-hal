@@ -79,11 +79,11 @@ def parse_hal(notice, aurehal, snapshot_date):
 
     # DATE
     publication_date = None
-    for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']
+    for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']:
         if isinstance(notice.get(f), 'str') and len(notice[f]) > 4:
             publication_date = parser.parse(notice[f]).isoformat()
     if publication_date is None:
-        for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']
+        for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']:
             if isinstance(notice.get(f), 'str'):
                 publication_date = parser.parse(notice[f]).isoformat()
     if publication_date:
@@ -107,7 +107,7 @@ def parse_hal(notice, aurehal, snapshot_date):
     if isinstance(notice.get('keyword_s'), list):
         for k in notice['keyword_s']:
             if isinstance(k, str):
-                keywords.append({'keyword': k.strip())
+                keywords.append({'keyword': k.strip()})
     if keywords:
         res['keywords'] = keywords
 

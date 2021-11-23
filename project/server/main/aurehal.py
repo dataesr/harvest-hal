@@ -120,7 +120,7 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
     os.system(f'rm -rf {current_file}.gz')
     
     current_file = f'aurehal_{aurehal_type}_dict.json'
-    json.dump(docid_struct_map, open(current_file, 'w'))
+    json.dump(docid_map, open(current_file, 'w'))
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
