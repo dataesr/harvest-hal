@@ -35,10 +35,12 @@ def get_millesime(x: str) -> str:
         return x
 
 def get_aurehal_from_OS(collection_name, aurehal_type):
-    current_file = f'aurehal_{aurehal_type}_dict.json'
-    download_object('hal', f'{collection_name}/{current_file}.gz', f'{current_file}.gz')
-    os.system(f'gunzip {current_file}.gz')
-    return json.load(open(current_file, 'r'))
+    target_file = f'aurehal_{collection_name}_{aurehal_type}_dict.json'
+    os.system(f'rm -rf {target_file}.gz')
+    os.system(f'rm -rf {target_file}')
+    download_object('hal', f'{collection_name}/aurehal_{aurehal_type}_dict.json.gz', f'{target_file}.gz')
+    os.system(f'gunzip {target_file}.gz')
+    return json.load(open(target_file, 'r'))
 
 def parse_hal(notice, aurehal, snapshot_date):
     res = {}
