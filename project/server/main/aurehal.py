@@ -1,10 +1,14 @@
 import os
 import requests
+import json
+import pycountry
 from project.server.main.utils_swift import upload_object
 from urllib.parse import quote_plus
-import json
+from project.server.main.logger import get_logger
 
-import pycountry
+
+logger = get_logger(__name__)
+
 country_code_to_name = {}
 for c in list(pycountry.countries):
     country_code = c.alpha_2.lower()
@@ -28,7 +32,7 @@ def get_aurehal(aurehal_type):
 def parse_aurehal(elt, aurehal_type):
     if aurehal_type == 'structure':
         return parse_structure(elt)
-    elif aurehal == 'author':
+    elif aurehal_type == 'author':
         return parse_author(elt)
 
 def parse_author(elt):
@@ -108,6 +112,7 @@ def create_docid_map(data, aurehal_type):
         parsed_data.append(parsed_elt)
         for docid in docids:
             docid_map[str(docid)] = parsed_elt
+    logger.debug(f'{aurehal_type} : {len(data)} elts and {len(docid_map)} docids in map')
     return parsed_data, docid_map
 
 def harvest_and_save_aurehal(collection_name, aurehal_type):

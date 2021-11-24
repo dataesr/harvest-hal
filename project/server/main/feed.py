@@ -35,7 +35,7 @@ def harvest_and_insert(collection_name):
     # 1. save aurehal structures
     aurehal = {}
     for ref in ['structure', 'author']:
-        harvest_and_save_aurehal(collection_name, ref)
+        #harvest_and_save_aurehal(collection_name, ref)
         aurehal[ref] = get_aurehal_from_OS(collection_name, ref)
 
     # 2. drop mongo 
