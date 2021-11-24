@@ -196,7 +196,7 @@ def parse_hal(notice, aurehal, snapshot_date):
             'snapshot_date': snapshot_date,
             'observation_date': observation_date,
              'is_oa': is_oa,
-            'host_type': 'repository'})
+            'host_type': host_type})
     if not oa_locations:
         oa_locations.append({'is_oa': False, 'snapshot_date': snapshot_date, 'observation_date': observation_date})
     oa_details[snapshot_date] = oa_locations
@@ -209,4 +209,6 @@ def parse_hal(notice, aurehal, snapshot_date):
     if isinstance(res.get('authors'), list) and len(res['authors']) > 0:
         if res['authors'][0].get('full_name'):
             title_first_author += ';'+normalize(res['authors'][0].get('full_name'))
+    if title_first_author:
+        res['title_first_author'] = title_first_author
     return res
