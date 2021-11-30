@@ -1,21 +1,27 @@
 import os
 import json
+import re
 from dateutil import parser
 from tokenizers import normalizers
-from tokenizers.normalizers import NFD, StripAccents, Lowercase
+from tokenizers.normalizers import NFD, StripAccents, Lowercase, BertNormalizer, Sequence, Strip
 from tokenizers import pre_tokenizers
 from tokenizers.pre_tokenizers import Whitespace
 from project.server.main.utils_swift import upload_object, download_object
 from project.server.main.logger import get_logger
 
-normalizer = normalizers.Sequence([NFD(), StripAccents(), Lowercase()])
+normalizer = Sequence([BertNormalizer(clean_text=True,
+        handle_chinese_chars=True,
+        strip_accents=True,
+        lowercase=True), Strip()])
 pre_tokenizer = pre_tokenizers.Sequence([Whitespace()])
 
 logger = get_logger(__name__)
 
-def normalize(x):
+def normalize(x, min_length = 0):
     normalized = normalizer.normalize_str(x)
-    return " ".join([e[0] for e in pre_tokenizer.pre_tokenize_str(normalized) if len(e[0]) > 1])
+    normalized = normalized.replace('\n', ' ')
+    normalized = re.sub(' +', ' ', normalized)
+    return " ".join([e[0] for e in pre_tokenizer.pre_tokenize_str(normalized) if len(e[0]) > min_length])
 
 def get_millesime(x: str) -> str:
     try:
@@ -47,12 +53,27 @@ def parse_hal(notice, aurehal, snapshot_date):
     res['sources'] = ['HAL']
     if isinstance(notice.get('doiId_s'), str):
         res['doi'] = notice.get('doiId_s').lower().strip()
+    external_ids = []
     if isinstance(notice.get('halId_s'), str):
-        res['external_ids'] = [{'id_type': 'hal_id', 'id_value': notice.get('halId_s')}]
+        external_ids.append({'id_type': 'hal_id', 'id_value': notice.get('halId_s')})
         res['hal_id'] = notice.get('halId_s')
+    if isinstance(notice.get('nntId_s'), str):
+        external_ids.append({'id_type': 'nnt_id', 'id_value': notice.get('nntId_s')})
+        res['nnt_id'] = notice.get('nntId_s')
+    if external_ids:
+        res['external_ids'] = external_ids
+    title = ''
     if isinstance(notice.get('title_s'), list):
         if len(notice.get('title_s')) > 0:
-            res['title'] = notice.get('title_s')[0].strip()
+            title = notice.get('title_s')[0].strip()
+    subtitle = ''
+    if isinstance(notice.get('subTitle_s'), list):
+        if len(notice.get('subTitle_s')) > 0:
+            subtitle = notice.get('subTitle_s')[0].strip()
+    if title and subtitle:
+        title = f'{title} : {subtitle}'
+    if title:
+        res['title'] = title
     if isinstance(notice.get('abstract_s'), list):
         if len(notice.get('abstract_s')) > 0:
             res['abstract'] = [{'abstract': notice.get('abstract_s')[0].strip()}]
@@ -74,6 +95,21 @@ def parse_hal(notice, aurehal, snapshot_date):
                 countries += aff.get('detected_countries')
         res['detected_countries'] = list(set(countries))
 
+    if isinstance(notice.get('docType_s'), str):
+        doctype = notice.get('docType_s')
+        if doctype == 'ART':
+            res['genre'] = 'journal-article'
+        elif doctype in ['COMM', 'DOUV']:
+            res['genre'] = 'proceedings'
+        elif doctype == 'OUV':
+            res['genre'] = 'book'
+        elif doctype == 'COUV':
+            res['genre'] = 'book-chapter'
+        elif doctype == 'THESE':
+            res['genre'] = 'thesis'
+        else:
+            res['genre'] = doctype.lower()
+
     ## AUTHORS
     authors_affiliations = {}
     if isinstance(notice.get('authIdHasStructure_fs'), list):
@@ -88,6 +124,9 @@ def parse_hal(notice, aurehal, snapshot_date):
                 logger.debug(f'from authors : struct ;{structId}; not in aurehal; type: {type(structId)};facet {facet}')
 
     authors = []
+    nb_auth_quality = 0
+    if isinstance(notice.get('authQuality_s'), list):
+        nb_auth_quality = len(notice.get('authQuality_s'))
     if isinstance(notice.get('authId_i'), list):
         for authorId in notice.get('authId_i'):
             authorIdStr = str(authorId)
@@ -99,6 +138,11 @@ def parse_hal(notice, aurehal, snapshot_date):
             else:
                 logger.debug(f'author ;{authorIdStr}; not in aureal ?; type: {type(authorIdStr)}')
     if authors:
+        nb_author = len(notice.get('authId_i'))
+        for ix, a in enumerate(authors):
+            a['author_position'] = ix + 1
+            if nb_author == nb_auth_quality:
+                a['role'] = notice.get('authQuality_s')[ix]
         res['authors'] = authors
 
     # DATE
@@ -109,10 +153,14 @@ def parse_hal(notice, aurehal, snapshot_date):
     if publication_date is None:
         for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']:
             if isinstance(notice.get(f), str):
-                publication_date = parser.parse(notice[f]).isoformat()
-    if publication_date:
-        res['published_date'] = publication_date
-        res['year'] = publication_date[0:4]
+                try:
+                    publication_date = parser.parse(notice[f]).isoformat()
+                    res['published_date'] = publication_date
+                    res['year'] = publication_date[0:4]
+                    #logger.debug(f'publication_date keeping {f}')
+                    break
+                except:
+                    pass
 
     # PUBLISHER
     if isinstance(notice.get('journalPublisher_s'), str):
@@ -207,10 +255,10 @@ def parse_hal(notice, aurehal, snapshot_date):
     ## title - first author
     title_first_author = ""
     if res.get('title'):
-        title_first_author += normalize(res.get('title')).strip()
+        title_first_author += normalize(res.get('title'), 1).strip()
     if isinstance(res.get('authors'), list) and len(res['authors']) > 0:
         if res['authors'][0].get('full_name'):
-            title_first_author += ';'+normalize(res['authors'][0].get('full_name'))
+            title_first_author += ';'+normalize(res['authors'][0].get('full_name'), 1)
     if title_first_author:
         res['title_first_author'] = title_first_author
     return res

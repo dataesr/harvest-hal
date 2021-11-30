@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import pycountry
+from retry import retry
 from project.server.main.utils_swift import upload_object
 from urllib.parse import quote_plus
 from project.server.main.logger import get_logger
@@ -14,6 +15,7 @@ for c in list(pycountry.countries):
     country_code = c.alpha_2.lower()
     country_code_to_name[country_code] = c.name
 
+@retry(delay=60, tries=5)
 def get_aurehal(aurehal_type):
     nb_rows = 10000
     cursor='*'
