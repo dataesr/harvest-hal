@@ -148,19 +148,14 @@ def parse_hal(notice, aurehal, snapshot_date):
     # DATE
     publication_date = None
     for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']:
-        if isinstance(notice.get(f), str) and len(notice[f]) > 4:
-            publication_date = parser.parse(notice[f]).isoformat()
-    if publication_date is None:
-        for f in ['publicationDate_s', 'ePublicationDate_s', 'defenseDate_s', 'producedDate_s']:
-            if isinstance(notice.get(f), str):
-                try:
-                    publication_date = parser.parse(notice[f]).isoformat()
-                    res['published_date'] = publication_date
-                    res['year'] = publication_date[0:4]
-                    #logger.debug(f'publication_date keeping {f}')
-                    break
-                except:
-                    pass
+        if isinstance(notice.get(f), str) and publication_date is None:
+            try:
+                publication_date = parser.parse(notice[f]).isoformat()
+                res['published_date'] = publication_date
+                res['year'] = publication_date[0:4]
+                #logger.debug(f'publication_date keeping {f}')
+            except:
+                pass
 
     # PUBLISHER
     if isinstance(notice.get('journalPublisher_s'), str):
