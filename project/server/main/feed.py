@@ -60,6 +60,20 @@ def get_data_hal(url):
     res = r.json()
     return res
 
+@retry(delay=60, tries=5)
+def get_one_page(nb_rows,cursor,year_start,year_end):
+    year_start_end = 'all_years'
+    if year_start and year_end:
+        year_start_end = f'{year_start}_{year_end}'
+    url = f'https://api.archives-ouvertes.fr/search/?q=*:*&wt=json&fl=*'
+    if year_start and year_end:
+        url += f'&fq=publicationDateY_i:[{year_start}%20TO%20{year_end}]'
+    url += f'&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
+    res = get_data_hal(url)
+    if cursor == '*':
+        logger.debug(f"HAL {year_start_end} : {res['response']['numFound']} documents to retrieve")
+    new_cursor = quote_plus(res['nextCursorMark'])
+    return res, new_cursor
 
 def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
     year_start_end = 'all_years'
@@ -73,17 +87,9 @@ def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
     chunk_index = 0
     MAX_DATA_SIZE = 25000
     while True:
-        url = f'https://api.archives-ouvertes.fr/search/?q=*:*&wt=json&fl=*'
-        if year_start and year_end:
-            url += f'&fq=publicationDateY_i:[{year_start}%20TO%20{year_end}]'
-        url += f'&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
-        res = get_data_hal(url)
-        if cursor == '*':
-            logger.debug(f"HAL {year_start_end} : {res['response']['numFound']} documents to retrieve")
-        new_cursor = quote_plus(res['nextCursorMark'])
+        res, new_cursor = get_one_page(nb_rows, cursor, year_start, year_end)
         logger.debug(f'{year_start_end}|{len(data)}')
         data += res['response']['docs']
-        
         if len(data) > MAX_DATA_SIZE:
             save_data(data, collection_name, year_start, year_end, chunk_index, aurehal)
             data = []

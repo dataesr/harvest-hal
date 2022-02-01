@@ -118,14 +118,24 @@ def create_docid_map(data, aurehal_type):
     return parsed_data, docid_map
 
 def harvest_and_save_aurehal(collection_name, aurehal_type):
+    # raw data
     data = get_aurehal(aurehal_type)
+    current_file = f'aurehal_raw_{aurehal_type}.json'
+    json.dump(data, open(current_file, 'w'))
+    os.system(f'gzip {current_file}')
+    upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
+    os.system(f'rm -rf {current_file}.gz')
+    
+    #parsed data
     parsed_data, docid_map = create_docid_map(data, aurehal_type)
+    
     current_file = f'aurehal_{aurehal_type}.json'
     json.dump(parsed_data, open(current_file, 'w'))
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
     
+    # doc id mapping
     current_file = f'aurehal_{aurehal_type}_dict.json'
     json.dump(docid_map, open(current_file, 'w'))
     os.system(f'gzip {current_file}')

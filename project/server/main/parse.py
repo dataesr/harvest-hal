@@ -23,6 +23,35 @@ def normalize(x, min_length = 0):
     normalized = re.sub(' +', ' ', normalized)
     return " ".join([e[0] for e in pre_tokenizer.pre_tokenize_str(normalized) if len(e[0]) > min_length])
 
+def get_repository(a_repo: str) -> str:
+    if a_repo.replace('www.', '')[0:3].lower() == 'hal':
+        return 'HAL'
+    for r in ['bioRxiv', 'medRxiv', 'arXiv', 'Research Square', 'Zenodo', 'Archimer', 'RePEc', 'CiteSeerX', 'univOAK']:
+        if r.lower().replace(' ', '') in a_repo.lower():
+            return r
+    if 'lilloa' in a_repo.lower():
+        return 'LillOA (Lille Open Archive)'
+    if 'ucl.ac.uk' in a_repo.lower():
+        return 'UCL Discovery'
+    if 'lirias' in a_repo.lower() and 'kuleuven' in a_repo.lower():
+        return 'LIRIAS (KU Leuven)'
+    if 'pure.atira.dk' in a_repo.lower():
+        return 'Pure (Denmark)'
+    if 'digital.csic.es' in a_repo.lower():
+        return 'DIGITAL.CSIC (Spain)'
+    if 'escholarship.org/ark' in a_repo.lower():
+        return 'California Digital Library - eScholarship'
+    if 'jupiter.its.unimelb.edu.au' in a_repo.lower():
+        return 'University of Melbourne - Minerva Access'
+    if 'helda.helsinki' in a_repo.lower():
+        return 'HELDA - Digital Repository of the University of Helsinki'
+    if 'osti.gov' in a_repo.lower():
+        return 'US Office of Scientific and Technical Information'
+    for f in ['pubmedcentral', 'ncbi.nlm.nih.gov/pmc', 'europepmc']:
+        if f in a_repo:
+            return 'PubMed Central'
+    return a_repo
+
 def get_millesime(x: str) -> str:
     try:
         if x[0:4] < '2021':
@@ -212,6 +241,7 @@ def parse_hal(notice, aurehal, snapshot_date):
     ## OA #####
     oa_details = {}
     is_oa = False
+    oa_host_type = None
     if notice.get('openAccess_bool') or notice.get('linkExtUrl_s'):
         is_oa = True
     observation_date = get_millesime(snapshot_date)
@@ -220,32 +250,45 @@ def parse_hal(notice, aurehal, snapshot_date):
     if isinstance(notice.get('licence_s'), str):
         license = notice.get('licence_s')
     if isinstance(notice.get('fileMain_s'), str):
+        is_oa = True
+        oa_host_type = 'repository'
         oa_locations.append(
             {'url': notice.get('fileMain_s'), 
              'repository_institution': 'HAL',
              'license': license,
-             'is_oa': is_oa,
-            'snapshot_date': snapshot_date,
-            'observation_date': observation_date,
-             'host_type': 'repository'})
+             'host_type': oa_host_type})
     elif isinstance(notice.get('linkExtUrl_s'), str):
-        host_type = None
-        if notice.get('linkExtId_s').lower().strip() in ['arxiv', 'pubmedcentral']:
+        is_oa = True
+        oa_host_type = None
+        url = notice.get('linkExtId_s').strip()
+        if get_repository(url) != url:
             host_type = 'repository'
+            repository = get_repository(url)
+            oa_locations.append(
+                {'url': url, 
+                'repository_normalized': repository,
+                'license': host_type,
+                'host_type': oa_host_type})
         elif 'doi' in notice.get('linkExtId_s').lower().strip():
-            host_type = 'publisher'
-        oa_locations.append(
-            {'url': notice.get('linkExtUrl_s'), 
-            'repository_institution': notice.get('linkExtId_s'),
-            'license': host_type,
-            'snapshot_date': snapshot_date,
-            'observation_date': observation_date,
-             'is_oa': is_oa,
-            'host_type': host_type})
-    if not oa_locations:
-        oa_locations.append({'is_oa': False, 'snapshot_date': snapshot_date, 'observation_date': observation_date})
-    oa_details[snapshot_date] = oa_locations
-    res['oa_details'] = oa_details
+            oa_host_type = 'publisher'
+            oa_locations.append(
+                {'url': url, 
+                'license': host_type,
+                'host_type': oa_host_type})
+
+    res['oa_details'] = {}
+    res['oa_details'][snapshot_date] = {'is_oa': is_oa, 'snapshot_date': snapshot_date, 'observation_date': observation_date}
+    if is_oa:
+        res['oa_details'][snapshot_date]['oa_host_type'] = oa_host_type
+        if oa_host_type == 'repository':
+            res['oa_details'][snapshot_date]['oa_colors'] = ['green']
+            res['oa_details'][snapshot_date]['oa_colors_with_priority_to_publisher'] = ['green_only']
+        else:
+            res['oa_details'][snapshot_date]['oa_colors'] = ['other']
+            res['oa_details'][snapshot_date]['oa_colors_with_priority_to_publisher'] = ['other']
+        res['oa_details'][snapshot_date]['repositories'] = [k['repository_normalized'] for k in oa_locations if 'repository_normalized' in k]
+        res['oa_details'][snapshot_date]['oa_locations'] = oa_locations
+
 
     ## title - first author
     title_first_author = ""
