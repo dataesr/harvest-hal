@@ -2,8 +2,9 @@ import os
 import requests
 import json
 import pycountry
+import pandas as pd
 from retry import retry
-from project.server.main.utils_swift import upload_object
+from project.server.main.utils_swift import upload_object, download_object
 from urllib.parse import quote_plus
 from project.server.main.logger import get_logger
 
@@ -31,13 +32,13 @@ def get_aurehal(aurehal_type):
         cursor = new_cursor
     return data
 
-def parse_aurehal(elt, aurehal_type):
+def parse_aurehal(elt, aurehal_type, hal_idref):
     if aurehal_type == 'structure':
         return parse_structure(elt)
     elif aurehal_type == 'author':
-        return parse_author(elt)
+        return parse_author(elt, hal_idref)
 
-def parse_author(elt):
+def parse_author(elt, hal_idref):
     author = {}
     author['hal_docid'] = str(elt['docid'])
     
@@ -54,6 +55,13 @@ def parse_author(elt):
         
     if isinstance(elt.get('idHal_i'), int) and elt.get('idHal_i') > 0:
         author['id_hal_i'] = str(elt.get('idHal_i'))
+        if author['id_hal_i'] in hal_idref:
+            known_vip = hal_idref[author['id_hal_i']]
+            logger.debug(f"using known ids for id_hal {author['id_hal_i']} : {known_vip}")
+            if 'idref' in known_vip:
+                author['idref'] = known_vip['idref']
+            if 'orcid' in known_vip:
+                author['orcid'] = known_vip['orcid']
     if isinstance(elt.get('idHal_s'), str):
         author['id_hal_s'] = elt.get('idHal_s')
         
@@ -102,7 +110,7 @@ def parse_structure(elt):
         affiliation['ror'] = elt.get('ror_s')[0]
     return affiliation
 
-def create_docid_map(data, aurehal_type):
+def create_docid_map(data, aurehal_type, hal_idref):
     docid_map = {}
     parsed_data = []
     for d in data:
@@ -110,7 +118,7 @@ def create_docid_map(data, aurehal_type):
         if isinstance(d.get('aliasDocid_i'), list):
             docids += d.get('aliasDocid_i')
         docids = list(set(docids))
-        parsed_elt = parse_aurehal(d, aurehal_type)
+        parsed_elt = parse_aurehal(d, aurehal_type, hal_idref)
         parsed_data.append(parsed_elt)
         for docid in docids:
             docid_map[str(docid)] = parsed_elt
@@ -126,8 +134,25 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
     
+    download_object('misc', 'vip.jsonl', f'vip.jsonl')
+    df_vip = pd.read_json('vip.jsonl', lines=True)
+    hal_idref = {}
+    vips = df_vip.to_dict(orient='records')
+    for vip in vips:
+        orcid, hal = None, None
+        idref = vip['id']
+        for ext in vip.get('externalIds', []):
+            if 'hal' in ext['type']:
+                hal = ext['id']
+            if 'orcid' in ext['type']:
+                orcid = ext['id']
+        if hal:
+            hal_idref[hal] = {'idref': idref.replace('idref', '')}
+            if orcid:
+                hal_idref[hal]['orcid'] = orcid
+    
     #parsed data
-    parsed_data, docid_map = create_docid_map(data, aurehal_type)
+    parsed_data, docid_map = create_docid_map(data, aurehal_type, hal_idref)
     
     current_file = f'aurehal_{aurehal_type}.json'
     json.dump(parsed_data, open(current_file, 'w'))
