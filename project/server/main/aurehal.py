@@ -5,9 +5,9 @@ import pycountry
 import pandas as pd
 from retry import retry
 from project.server.main.utils_swift import upload_object, download_object
+from project.server.main.idref import update_vip
 from urllib.parse import quote_plus
 from project.server.main.logger import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -64,6 +64,13 @@ def parse_author(elt, hal_idref):
                 author['orcid'] = known_vip['orcid']
     if isinstance(elt.get('idHal_s'), str):
         author['id_hal_s'] = elt.get('idHal_s')
+        if author['id_hal_s'] in hal_idref:
+            known_vip = hal_idref[author['id_hal_s']]
+            logger.debug(f"using known ids for id_hal {author['id_hal_s']} : {known_vip}")
+            if 'idref' in known_vip:
+                author['idref'] = known_vip['idref']
+            if 'orcid' in known_vip:
+                author['orcid'] = known_vip['orcid']
         
     if isinstance(elt.get('emailDomain_s'), str):
         author['email_domain'] = elt.get('emailDomain_s').strip()
@@ -133,23 +140,29 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
-    
+    update_vip() 
     download_object('misc', 'vip.jsonl', f'vip.jsonl')
     df_vip = pd.read_json('vip.jsonl', lines=True)
     hal_idref = {}
     vips = df_vip.to_dict(orient='records')
     for vip in vips:
-        orcid, hal = None, None
+        orcid, id_hal_i, id_hal_s = None, None, None
         idref = vip['id']
         for ext in vip.get('externalIds', []):
-            if 'hal' in ext['type']:
-                hal = ext['id']
+            if 'id_hal_i' in ext['type']:
+                id_hal_i = ext['id']
+            if 'id_hal_s' in ext['type']:
+                id_hal_s = ext['id']
             if 'orcid' in ext['type']:
                 orcid = ext['id']
-        if hal:
-            hal_idref[hal] = {'idref': idref.replace('idref', '')}
+        if id_hal_i:
+            hal_idref[id_hal_i] = {'idref': idref.replace('idref', '')}
             if orcid:
-                hal_idref[hal]['orcid'] = orcid
+                hal_idref[id_hal_i]['orcid'] = orcid
+        if id_hal_s:
+            hal_idref[id_hal_s] = {'idref': idref.replace('idref', '')}
+            if orcid:
+                hal_idref[id_hal_s]['orcid'] = orcid
     
     #parsed data
     parsed_data, docid_map = create_docid_map(data, aurehal_type, hal_idref)
