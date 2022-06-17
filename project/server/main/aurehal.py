@@ -18,6 +18,7 @@ for c in list(pycountry.countries):
 
 @retry(delay=60, tries=5)
 def get_aurehal(aurehal_type):
+    logger.debug(f'start {aurehal_type} aurehal')
     nb_rows = 10000
     cursor='*'
     data = []
@@ -30,6 +31,7 @@ def get_aurehal(aurehal_type):
         if new_cursor == cursor:
             break
         cursor = new_cursor
+    logger.debug(f'end {aurehal_type} aurehal')
     return data
 
 def parse_aurehal(elt, aurehal_type, hal_idref):
@@ -140,33 +142,32 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
     os.system(f'gzip {current_file}')
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
-    update_vip() 
-    download_object('misc', 'vip.jsonl', f'vip.jsonl')
-    df_vip = pd.read_json('vip.jsonl', lines=True)
     hal_idref = {}
-    vips = df_vip.to_dict(orient='records')
-    for vip in vips:
-        orcid, id_hal_i, id_hal_s = None, None, None
-        idref = vip['id']
-        for ext in vip.get('externalIds', []):
-            if 'id_hal_i' in ext['type']:
-                id_hal_i = ext['id']
-            if 'id_hal_s' in ext['type']:
-                id_hal_s = ext['id']
-            if 'orcid' in ext['type']:
-                orcid = ext['id']
-        if id_hal_i:
-            hal_idref[id_hal_i] = {'idref': idref.replace('idref', '')}
-            if orcid:
-                hal_idref[id_hal_i]['orcid'] = orcid
-        if id_hal_s:
-            hal_idref[id_hal_s] = {'idref': idref.replace('idref', '')}
-            if orcid:
-                hal_idref[id_hal_s]['orcid'] = orcid
-    
+    if aurehal_type == 'author':
+        update_vip() 
+        download_object('misc', 'vip.jsonl', f'vip.jsonl')
+        df_vip = pd.read_json('vip.jsonl', lines=True)
+        vips = df_vip.to_dict(orient='records')
+        for vip in vips:
+            orcid, id_hal_i, id_hal_s = None, None, None
+            idref = vip['id']
+            for ext in vip.get('externalIds', []):
+                if 'id_hal_i' in ext['type']:
+                    id_hal_i = ext['id']
+                if 'id_hal_s' in ext['type']:
+                    id_hal_s = ext['id']
+                if 'orcid' in ext['type']:
+                    orcid = ext['id']
+            if id_hal_i:
+                hal_idref[id_hal_i] = {'idref': idref.replace('idref', '')}
+                if orcid:
+                    hal_idref[id_hal_i]['orcid'] = orcid
+            if id_hal_s:
+                hal_idref[id_hal_s] = {'idref': idref.replace('idref', '')}
+                if orcid:
+                    hal_idref[id_hal_s]['orcid'] = orcid
     #parsed data
     parsed_data, docid_map = create_docid_map(data, aurehal_type, hal_idref)
-    
     current_file = f'aurehal_{aurehal_type}.json'
     json.dump(parsed_data, open(current_file, 'w'))
     os.system(f'gzip {current_file}')
