@@ -1,4 +1,5 @@
 import datetime
+import time
 import os
 import pymongo
 import requests
@@ -30,16 +31,18 @@ def save_data(data, collection_name, year_start, year_end, chunk_index, aurehal)
     current_file_parsed = f'hal_parsed_{year_start_end}_{chunk_index}.json'
     data_parsed = [parse_hal(e, aurehal, collection_name) for e in data]
     json.dump(data_parsed, open(current_file_parsed, 'w'))
-    insert_data(collection_name, current_file_parsed)
+    # not insertion in mongo ?
+    # insert_data(collection_name, current_file_parsed)
     os.system(f'gzip {current_file_parsed}')
     upload_object('hal', f'{current_file_parsed}.gz', f'{collection_name}/parsed/{current_file_parsed}.gz')
     os.system(f'rm -rf {current_file_parsed}.gz')
 
-def harvest_and_insert(collection_name):
+def harvest_and_insert(collection_name, harvest_aurehal=True):
     # 1. save aurehal structures
     aurehal = {}
     for ref in ['structure', 'author']:
-        harvest_and_save_aurehal(collection_name, ref)
+        if harvest_aurehal:
+            harvest_and_save_aurehal(collection_name, ref)
         aurehal[ref] = get_aurehal_from_OS(collection_name, ref)
 
     # 2. drop mongo 
@@ -52,16 +55,27 @@ def harvest_and_insert(collection_name):
     year_end = None
     # year_start = 1900
     # year_end = datetime.date.today().year
-    harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal)
+    years_start_end = [(1000, 1990),(1991,2000),(2001,2010),(2011,2017),(2018,2020),(2021,2500)]
+    for (year_start, year_end) in years_start_end:
+        harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal)
 
-@retry(delay=60, tries=5)
-def get_data_hal(url):
+@retry(delay=300, tries=5, logger=logger)
+def get_data_hal(url, nb_rows_total):
+    logger.debug(f'{nb_rows_total} and new url {url}')
     r = requests.get(url)
-    res = r.json()
+    logger.debug(f'status_code : {r.status_code}')
+    try:
+        res = r.json()
+    except:
+        logger.debug(f'ERROR for url {url}')
+        logger.debug(r.status_code)
+        logger.debug(r.text)
+        r = requests.get(url)
+        res = r.json()
     return res
 
 @retry(delay=60, tries=5)
-def get_one_page(nb_rows,cursor,year_start,year_end):
+def get_one_page(nb_rows,cursor,year_start,year_end, nb_rows_total):
     year_start_end = 'all_years'
     if year_start and year_end:
         year_start_end = f'{year_start}_{year_end}'
@@ -69,7 +83,7 @@ def get_one_page(nb_rows,cursor,year_start,year_end):
     if year_start and year_end:
         url += f'&fq=publicationDateY_i:[{year_start}%20TO%20{year_end}]'
     url += f'&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
-    res = get_data_hal(url)
+    res = get_data_hal(url, nb_rows_total)
     if cursor == '*':
         logger.debug(f"HAL {year_start_end} : {res['response']['numFound']} documents to retrieve")
     new_cursor = quote_plus(res['nextCursorMark'])
@@ -81,13 +95,14 @@ def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
         year_start_end = f'{year_start}_{year_end}'
 
     # todo save by chunk
-    nb_rows = 1000
+    nb_rows = 2000
+    nb_rows_total = 0
     cursor='*'
     data = []
     chunk_index = 0
     MAX_DATA_SIZE = 25000
     while True:
-        res, new_cursor = get_one_page(nb_rows, cursor, year_start, year_end)
+        res, new_cursor = get_one_page(nb_rows, cursor, year_start, year_end, nb_rows_total)
         logger.debug(f'{year_start_end}|{len(data)}')
         data += res['response']['docs']
         if len(data) > MAX_DATA_SIZE:
@@ -100,6 +115,7 @@ def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
                 save_data(data, collection_name, year_start, year_end, chunk_index, aurehal)
             break
         cursor = new_cursor
+        nb_rows_total += nb_rows
 
 
 def insert_data(collection_name, output_file):
