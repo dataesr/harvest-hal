@@ -37,7 +37,7 @@ def save_data(data, collection_name, year_start, year_end, chunk_index, aurehal)
     upload_object('hal', f'{current_file_parsed}.gz', f'{collection_name}/parsed/{current_file_parsed}.gz')
     os.system(f'rm -rf {current_file_parsed}.gz')
 
-def harvest_and_insert(collection_name, harvest_aurehal=True):
+def harvest_and_insert(collection_name, harvest_aurehal=True, min_year=1000):
     # 1. save aurehal structures
     aurehal = {}
     for ref in ['structure', 'author']:
@@ -55,15 +55,20 @@ def harvest_and_insert(collection_name, harvest_aurehal=True):
     year_end = None
     # year_start = 1900
     # year_end = datetime.date.today().year
-    years_start_end = [(1000, 1990),(1991,2000),(2001,2010),(2011,2017),(2018,2020),(2021,2500)]
+    years_start_end = [(1000, 1990),(1991,2000),(2001,2010)]
+    for y in range(2011, datetime.datetime.now().year+1):
+        years_start_end.append((y, y))
+    years_start_end.append((datetime.datetime.now().year+1,2100))
+    years_start_end = [y for y in years_start_end if y[0] >= min_year]
+    logger.debug(f'years_start_end = {years_start_end}')
     for (year_start, year_end) in years_start_end:
         harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal)
 
 @retry(delay=300, tries=5, logger=logger)
 def get_data_hal(url, nb_rows_total):
-    logger.debug(f'{nb_rows_total} and new url {url}')
-    r = requests.get(url)
-    logger.debug(f'status_code : {r.status_code}')
+    #logger.debug(f'{nb_rows_total} and new url {url}')
+    r = requests.get(url, timeout=100)
+    #logger.debug(f'status_code : {r.status_code}')
     try:
         res = r.json()
     except:
@@ -74,7 +79,7 @@ def get_data_hal(url, nb_rows_total):
         res = r.json()
     return res
 
-@retry(delay=60, tries=5)
+@retry(delay=300, tries=5, logger=logger)
 def get_one_page(nb_rows,cursor,year_start,year_end, nb_rows_total):
     year_start_end = 'all_years'
     if year_start and year_end:
@@ -95,7 +100,7 @@ def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
         year_start_end = f'{year_start}_{year_end}'
 
     # todo save by chunk
-    nb_rows = 2000
+    nb_rows = 1000
     nb_rows_total = 0
     cursor='*'
     data = []

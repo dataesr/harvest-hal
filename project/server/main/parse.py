@@ -220,7 +220,7 @@ def parse_hal(notice, aurehal, snapshot_date):
     if isinstance(notice.get('funding_s'), list):
         for f in notice['funding_s']:
             if isinstance(f, str):
-                grants.append({'grant':f})
+                grants.append({'grantid':f})
                 
     if isinstance(notice.get('anrProjectReference_s'), list):
         for f in notice['anrProjectReference_s']:
