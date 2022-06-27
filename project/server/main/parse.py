@@ -156,9 +156,15 @@ def parse_hal(notice, aurehal, snapshot_date):
     nb_auth_quality = 0
     if isinstance(notice.get('authQuality_s'), list):
         nb_auth_quality = len(notice.get('authQuality_s'))
-    if isinstance(notice.get('authId_i'), list):
-        for authorId in notice.get('authId_i'):
-            authorIdStr = str(authorId)
+    #if isinstance(notice.get('authId_i'), list):
+    if isinstance(notice.get('authIdForm_i'), list) and isinstance(notice.get('authIdPerson_i'), list):
+        idforms = notice.get('authIdForm_i')
+        idpersons = notice.get('authIdPerson_i')
+        assert(len(idforms) == len(idpersons))
+        #for authorId in notice.get('authId_i'):
+        for ix in range(0, len(idforms)):
+            #authorIdStr = str(authorId)
+            authorIdStr = f'{idforms[ix]}-{idpersons[ix]}'
             if authorIdStr in aurehal['author']:
                 author = aurehal['author'][authorIdStr]
                 if authorIdStr in authors_affiliations:
@@ -167,7 +173,8 @@ def parse_hal(notice, aurehal, snapshot_date):
             else:
                 logger.debug(f'author ;{authorIdStr}; not in aureal ?; type: {type(authorIdStr)}')
     if authors:
-        nb_author = len(notice.get('authId_i'))
+        #nb_author = len(notice.get('authId_i'))
+        nb_author = len(notice.get('authIdForm_i'))
         for ix, a in enumerate(authors):
             a['author_position'] = ix + 1
             if nb_author == nb_auth_quality:
@@ -277,17 +284,17 @@ def parse_hal(notice, aurehal, snapshot_date):
                 'host_type': oa_host_type})
 
     res['oa_details'] = {}
-    res['oa_details'][snapshot_date] = {'is_oa': is_oa, 'snapshot_date': snapshot_date, 'observation_date': observation_date}
+    res['oa_details'][observation_date] = {'is_oa': is_oa, 'snapshot_date': snapshot_date, 'observation_date': observation_date}
     if is_oa:
-        res['oa_details'][snapshot_date]['oa_host_type'] = oa_host_type
+        res['oa_details'][observation_date]['oa_host_type'] = oa_host_type
         if oa_host_type == 'repository':
-            res['oa_details'][snapshot_date]['oa_colors'] = ['green']
-            res['oa_details'][snapshot_date]['oa_colors_with_priority_to_publisher'] = ['green_only']
+            res['oa_details'][observation_date]['oa_colors'] = ['green']
+            res['oa_details'][observation_date]['oa_colors_with_priority_to_publisher'] = ['green_only']
         else:
-            res['oa_details'][snapshot_date]['oa_colors'] = ['other']
-            res['oa_details'][snapshot_date]['oa_colors_with_priority_to_publisher'] = ['other']
-        res['oa_details'][snapshot_date]['repositories'] = [k['repository_normalized'] for k in oa_locations if 'repository_normalized' in k]
-        res['oa_details'][snapshot_date]['oa_locations'] = oa_locations
+            res['oa_details'][observation_date]['oa_colors'] = ['other']
+            res['oa_details'][observation_date]['oa_colors_with_priority_to_publisher'] = ['other']
+        res['oa_details'][observation_date]['repositories'] = [k['repository_normalized'] for k in oa_locations if 'repository_normalized' in k]
+        res['oa_details'][observation_date]['oa_locations'] = oa_locations
 
 
     ## title - first author
