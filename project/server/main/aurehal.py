@@ -16,7 +16,7 @@ for c in list(pycountry.countries):
     country_code = c.alpha_2.lower()
     country_code_to_name[country_code] = c.name
 
-@retry(delay=60, tries=5)
+@retry(delay=200, tries=10)
 def get_aurehal(aurehal_type):
     logger.debug(f'start {aurehal_type} aurehal')
     nb_rows = 10000
