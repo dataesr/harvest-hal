@@ -252,32 +252,41 @@ def parse_hal(notice, aurehal, snapshot_date):
     license = None
     if isinstance(notice.get('licence_s'), str):
         license = notice.get('licence_s')
-    if isinstance(notice.get('fileMain_s'), str):
+    if notice.get('submitType_s') == 'file':
         is_oa = True
         oa_host_type = 'repository'
         oa_locations.append(
             {'url': notice.get('fileMain_s'), 
              'repository_institution': 'HAL',
              'repository_normalized': 'HAL',
+             'self_archiving': notice.get('selfArchiving_bool'),
              'license': license,
              'host_type': oa_host_type})
-    elif isinstance(notice.get('linkExtUrl_s'), str):
+    elif notice.get('submitType_s') == 'notice' and isinstance(notice.get('linkExtUrl_s'), str) and notice.get('openAccess_bool'):
         is_oa = True
         oa_host_type = None
-        url = notice.get('linkExtId_s').strip()
+        url = notice.get('linkExtUrl_s').strip()
+        # si le repository est reconnu par la fonction get_repository
         if get_repository(url) != url:
-            host_type = 'repository'
+            oa_host_type = 'repository'
             repository = get_repository(url)
             oa_locations.append(
                 {'url': url, 
                 'repository_normalized': repository,
-                'license': host_type,
+                'license': license,
+                'self_archiving': notice.get('selfArchiving_bool'),
                 'host_type': oa_host_type})
-        elif 'doi' in notice.get('linkExtId_s').lower().strip():
+        elif 'doi' in notice.get('linkExtUrl_s').lower().strip():
             oa_host_type = 'publisher'
             oa_locations.append(
                 {'url': url, 
-                'license': host_type,
+                'license': license,
+                'host_type': oa_host_type})
+        else:
+            oa_host_type = 'unknown'
+            oa_locations.append(
+                {'url': url, 
+                'license': license,
                 'host_type': oa_host_type})
 
     res['oa_details'] = {}
