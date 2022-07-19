@@ -244,7 +244,7 @@ def parse_hal(notice, aurehal, snapshot_date):
     ## OA #####
     oa_details = {}
     is_oa = False
-    oa_host_type = None
+    oa_host_type = 'closed'
     if notice.get('openAccess_bool') or notice.get('linkExtUrl_s'):
         is_oa = True
     observation_date = get_millesime(snapshot_date)
@@ -264,7 +264,7 @@ def parse_hal(notice, aurehal, snapshot_date):
              'host_type': oa_host_type})
     elif notice.get('submitType_s') == 'notice' and isinstance(notice.get('linkExtUrl_s'), str) and notice.get('openAccess_bool'):
         is_oa = True
-        oa_host_type = None
+        oa_host_type = 'unknown'
         url = notice.get('linkExtUrl_s').strip()
         # si le repository est reconnu par la fonction get_repository
         if get_repository(url) != url:
@@ -301,6 +301,10 @@ def parse_hal(notice, aurehal, snapshot_date):
             res['oa_details'][observation_date]['oa_colors_with_priority_to_publisher'] = ['other']
         res['oa_details'][observation_date]['repositories'] = [k['repository_normalized'] for k in oa_locations if 'repository_normalized' in k]
         res['oa_details'][observation_date]['oa_locations'] = oa_locations
+    else:
+        res['oa_details'][observation_date]['oa_host_type'] = 'closed'
+        res['oa_details'][observation_date]['oa_colors'] = 'closed'
+        res['oa_details'][observation_date]['oa_colors_with_priority_to_publisher'] = ['closed']
 
 
     ## title - first author
