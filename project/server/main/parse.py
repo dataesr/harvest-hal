@@ -185,6 +185,7 @@ def parse_hal(notice, aurehal, snapshot_date):
                 publication_date = parser.parse(notice[f]).isoformat()
                 res['published_date'] = publication_date
                 res['year'] = publication_date[0:4]
+                break
                 #logger.debug(f'publication_date keeping {f}')
             except:
                 pass
