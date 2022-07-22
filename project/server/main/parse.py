@@ -246,14 +246,12 @@ def parse_hal(notice, aurehal, snapshot_date):
     oa_details = {}
     is_oa = False
     oa_host_type = 'closed'
-    if notice.get('openAccess_bool') or notice.get('linkExtUrl_s'):
-        is_oa = True
     observation_date = get_millesime(snapshot_date)
     oa_locations = []
     license = None
     if isinstance(notice.get('licence_s'), str):
         license = notice.get('licence_s')
-    if notice.get('submitType_s') == 'file':
+    if notice.get('submitType_s') == 'file' and notice.get('openAccess_bool'):
         is_oa = True
         oa_host_type = 'repository'
         oa_locations.append(
@@ -289,6 +287,8 @@ def parse_hal(notice, aurehal, snapshot_date):
                 {'url': url, 
                 'license': license,
                 'host_type': oa_host_type})
+    else:
+        is_oa = False
 
     res['oa_details'] = {}
     res['oa_details'][observation_date] = {'is_oa': is_oa, 'snapshot_date': snapshot_date, 'observation_date': observation_date}
