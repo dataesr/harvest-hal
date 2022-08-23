@@ -175,6 +175,9 @@ def parse_hal(notice, aurehal, snapshot_date):
             a['author_position'] = ix + 1
             if nb_author == nb_auth_quality:
                 a['role'] = notice.get('authQuality_s')[ix]
+                if notice.get('authQuality_s')[ix] == 'crp':
+                    a['role'] = 'aut'
+                    a['corresponding'] = True
         res['authors'] = authors
 
     # DATE
