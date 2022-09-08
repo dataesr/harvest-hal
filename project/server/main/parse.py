@@ -107,12 +107,15 @@ def parse_hal(notice, aurehal, snapshot_date):
         if len(notice.get('abstract_s')) > 0:
             res['abstract'] = [{'abstract': notice.get('abstract_s')[0].strip()}]
     if isinstance(notice.get('structId_i'), list):
+        res['hal_struct_id'] = notice['structId_i']
         affiliations = []
         for s in notice.get('structId_i'):
             structId = str(s)
             if structId in aurehal['structure']:
                 if aurehal['structure'][structId] not in affiliations:
-                    affiliations.append(aurehal['structure'][structId])
+                    current_structure = aurehal['structure'][structId]
+                    current_structure['structId'] = structId
+                    affiliations.append(current_structure)
             else:
                 logger.debug(f'from structure;{structId}; not in aurehal data ? type: {type(structId)}')
         if affiliations:
@@ -138,6 +141,9 @@ def parse_hal(notice, aurehal, snapshot_date):
             res['genre'] = 'thesis'
         else:
             res['genre'] = doctype.lower()
+
+    if isinstance(notice.get('collCode_s'), list):
+        res['hal_collection_code'] = notice['collCode_s']
 
     ## AUTHORS
     authors_affiliations = {}
