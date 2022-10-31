@@ -129,6 +129,7 @@ def parse_hal(notice, aurehal, snapshot_date):
 
     if isinstance(notice.get('docType_s'), str):
         doctype = notice.get('docType_s')
+        res['hal_docType'] = doctype
         if doctype == 'ART':
             res['genre'] = 'journal-article'
         elif doctype in ['COMM']:

@@ -27,15 +27,24 @@ def save_data(data, collection_name, year_start, year_end, chunk_index, aurehal)
     upload_object('hal', f'{current_file}.gz', f'{collection_name}/raw/{current_file}.gz')
     os.system(f'rm -rf {current_file}.gz')
 
-    # 2.transform data and save in mongo
+    # 2.transform data and save in object storage
     current_file_parsed = f'hal_parsed_{year_start_end}_{chunk_index}.json'
     data_parsed = [parse_hal(e, aurehal, collection_name) for e in data]
     json.dump(data_parsed, open(current_file_parsed, 'w'))
-    # not insertion in mongo ?
-    # insert_data(collection_name, current_file_parsed)
     os.system(f'gzip {current_file_parsed}')
     upload_object('hal', f'{current_file_parsed}.gz', f'{collection_name}/parsed/{current_file_parsed}.gz')
     os.system(f'rm -rf {current_file_parsed}.gz')
+
+    #3. oa_details
+    oa_details_data = []
+    for d in data_parsed:
+        elt = { 'hal_id': d['hal_id'], 'oa_details': d['oa_details'] }
+        oa_details_data.append(elt)
+    current_file_oa_details = f'hal_oa_details_{year_start_end}_{chunk_index}.json'
+    json.dump(oa_details_data, open(current_file_oa_details, 'w'))
+    insert_data(collection_name, current_file_oa_details)
+    os.system(f'rm -rf {current_file_oa_details}.gz')
+
 
 def harvest_and_insert(collection_name, harvest_aurehal=True, min_year=1000):
     # 1. save aurehal structures
@@ -136,9 +145,7 @@ def insert_data(collection_name, output_file):
     os.system(mongoimport)
     logger.debug(f'Checking indexes on collection {collection_name}')
     mycol = mydb[collection_name]
-    mycol.create_index('halId_s')
-    mycol.create_index('docid')
-    mycol.create_index('publicationDateY_i')
+    mycol.create_index('hal_id')
     end = datetime.datetime.now()
     delta = end - start
     logger.debug(f'Mongoimport done in {delta}')
