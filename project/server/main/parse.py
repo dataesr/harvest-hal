@@ -132,7 +132,7 @@ def parse_hal(notice, aurehal, snapshot_date):
         res['hal_docType'] = doctype
         if doctype == 'ART':
             res['genre'] = 'journal-article'
-        elif doctype in ['COMM']:
+        elif doctype in ['COMM', 'PROCEEDINGS']:
             res['genre'] = 'proceedings'
         elif doctype in ['OUV', 'DOUV']:
             res['genre'] = 'book'
