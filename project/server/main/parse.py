@@ -147,6 +147,8 @@ def parse_hal(notice, aurehal, snapshot_date):
 
     if isinstance(notice.get('collCode_s'), list):
         res['hal_collection_code'] = notice['collCode_s']
+    if isinstance(notice.get('collCode_s'), str):
+        res['hal_collection_code'] = [notice['collCode_s']]
 
     ## AUTHORS
     authors_affiliations = {}
