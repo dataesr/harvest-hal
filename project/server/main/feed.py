@@ -7,6 +7,7 @@ from urllib import parse
 from urllib.parse import quote_plus
 import json
 from retry import retry
+from datetime import date
 
 from project.server.main.logger import get_logger
 from project.server.main.utils_swift import upload_object
@@ -14,6 +15,14 @@ from project.server.main.parse import parse_hal, get_aurehal_from_OS
 from project.server.main.aurehal import harvest_and_save_aurehal
 
 logger = get_logger(__name__)
+
+def nb_days_month(y, m):
+    y2 = y
+    m2 = m + 1
+    if m == 12:
+        y2 = y+1
+        m2 = 1
+    return (date(y2, m2, 1) - date(y, m, 1)).days
 
 def save_data(data, collection_name, year_start, year_end, chunk_index, aurehal):
 
@@ -64,11 +73,26 @@ def harvest_and_insert(collection_name, harvest_aurehal=True, min_year=1000):
     year_end = None
     # year_start = 1900
     # year_end = datetime.date.today().year
-    years_start_end = [(1000, 1990),(1991,2000),(2001,2010)]
-    for y in range(2011, datetime.datetime.now().year+1):
-        years_start_end.append((y, y))
-    years_start_end.append((datetime.datetime.now().year+1,2100))
-    years_start_end = [y for y in years_start_end if y[0] >= min_year]
+    year_prefix = '-01-01T00:00:00Z'
+    year_suffix = '-12-31T23:59:59Z'
+    years_start_end = [('1000'+year_prefix, '1990'+year_suffix),
+                   ('1991'+year_prefix, '2000'+year_suffix),
+                   ('2001'+year_prefix, '2010'+year_suffix)
+                  ]
+    for y in range(2011, 2016):
+        years_start_end.append((str(y)+year_prefix, str(y)+year_suffix))
+    for y in range(2016, datetime.datetime.now().year+1):
+        for m in range(1, 13):
+            D = nb_days_month(y, m)
+            years_start_end.append((f'{y}-{str(m).zfill(2)}-01T00:00:00Z', f'{y}-{str(m).zfill(2)}-{D}T23:59:59Z'))
+    years_start_end.append((str(datetime.datetime.now().year+1)+year_prefix, str(2100) + year_suffix))
+    years_start_end = [y for y in years_start_end if y[0] >= str(min_year)]
+
+    #years_start_end = [(1000, 1990),(1991,2000),(2001,2010)]
+    #for y in range(2011, datetime.datetime.now().year+1):
+    #    years_start_end.append((y, y))
+    #years_start_end.append((datetime.datetime.now().year+1,2100))
+    #years_start_end = [y for y in years_start_end if y[0] >= min_year]
     logger.debug(f'years_start_end = {years_start_end}')
     for (year_start, year_end) in years_start_end:
         harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal)
@@ -95,7 +119,7 @@ def get_one_page(nb_rows,cursor,year_start,year_end, nb_rows_total):
         year_start_end = f'{year_start}_{year_end}'
     url = f'https://api.archives-ouvertes.fr/search/?q=*:*&wt=json&fl=*'
     if year_start and year_end:
-        url += f'&fq=publicationDateY_i:[{year_start}%20TO%20{year_end}]'
+        url += f'&fq=producedDate_tdate:[{year_start}%20TO%20{year_end}]'
     url += f'&sort=docid asc&rows={nb_rows}&cursorMark={cursor}'
     res = get_data_hal(url, nb_rows_total)
     if cursor == '*':
@@ -109,7 +133,7 @@ def harvest_and_insert_one_year(collection_name, year_start, year_end, aurehal):
         year_start_end = f'{year_start}_{year_end}'
 
     # todo save by chunk
-    nb_rows = 1000
+    nb_rows = 200
     nb_rows_total = 0
     cursor='*'
     data = []
