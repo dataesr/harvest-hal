@@ -318,7 +318,7 @@ def parse_hal(notice, aurehal, snapshot_date):
         res['oa_details'][observation_date]['oa_locations'] = oa_locations
     else:
         res['oa_details'][observation_date]['oa_host_type'] = 'closed'
-        res['oa_details'][observation_date]['oa_colors'] = 'closed'
+        res['oa_details'][observation_date]['oa_colors'] = ['closed']
         res['oa_details'][observation_date]['oa_colors_with_priority_to_publisher'] = ['closed']
 
 
