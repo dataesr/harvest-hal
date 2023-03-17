@@ -46,6 +46,8 @@ def add_data(data, uri_prefix, target_index, target_id):
             continue
         if idref not in data:
             data[idref] = {'id':idref, 'externalIds':[]}
+        if not isinstance(data[idref].get('externalIds'), list):
+            data[idref]['externalIds'] = []
         externalIds = data[idref]['externalIds']
         has_ext = False
         for e in externalIds:

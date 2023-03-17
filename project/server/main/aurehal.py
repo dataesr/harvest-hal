@@ -151,21 +151,23 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
         for vip in vips:
             orcid, id_hal_i, id_hal_s = None, None, None
             idref = vip['id']
-            for ext in vip.get('externalIds', []):
-                if 'id_hal_i' in ext['type']:
-                    id_hal_i = ext['id']
-                if 'id_hal_s' in ext['type']:
-                    id_hal_s = ext['id']
-                if 'orcid' in ext['type']:
-                    orcid = ext['id']
-            if id_hal_i:
-                hal_idref[id_hal_i] = {'idref': idref.replace('idref', '')}
-                if orcid:
-                    hal_idref[id_hal_i]['orcid'] = orcid
-            if id_hal_s:
-                hal_idref[id_hal_s] = {'idref': idref.replace('idref', '')}
-                if orcid:
-                    hal_idref[id_hal_s]['orcid'] = orcid
+            externalIds = vip.get('externalIds', [])
+            if isinstance(externalIds, list):
+                for ext in vip.get('externalIds', []):
+                    if 'id_hal_i' in ext['type']:
+                        id_hal_i = ext['id']
+                    if 'id_hal_s' in ext['type']:
+                        id_hal_s = ext['id']
+                    if 'orcid' in ext['type']:
+                        orcid = ext['id']
+                if id_hal_i:
+                    hal_idref[id_hal_i] = {'idref': idref.replace('idref', '')}
+                    if orcid:
+                        hal_idref[id_hal_i]['orcid'] = orcid
+                if id_hal_s:
+                    hal_idref[id_hal_s] = {'idref': idref.replace('idref', '')}
+                    if orcid:
+                        hal_idref[id_hal_s]['orcid'] = orcid
     #parsed data
     parsed_data, docid_map = create_docid_map(data, aurehal_type, hal_idref)
     current_file = f'aurehal_{aurehal_type}.json'
