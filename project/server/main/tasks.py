@@ -2,7 +2,7 @@ import time
 import datetime
 import os
 import requests
-from project.server.main.feed import harvest_and_insert
+from project.server.main.feed import harvest_and_insert, load_collection_from_object_storage
 
 from project.server.main.logger import get_logger
 
@@ -17,3 +17,7 @@ def create_task_harvest(arg):
 
 #    url_hal_update = "https://api.archives-ouvertes.fr/search/?fq=doiId_s:*%20AND%20structCountry_s:fr%20AND%20modifiedDate_tdate:[{0}T00:00:00Z%20TO%20{1}T00:00:00Z]%20AND%20producedDate_tdate:[2013-01-01T00:00:00Z%20TO%20{1}T00:00:00Z]&fl=halId_s,doiId_s,openAccess_bool&rows={2}&start={3}"
 
+def create_task_load_collection_from_object_storage(args):
+    collection_name = args.get('collection_name')
+    if collection_name:
+        load_collection_from_object_storage(collection_name)

@@ -1,18 +1,16 @@
 import datetime
-import time
+from datetime import date
+import json
 import os
 import pymongo
 import requests
-from urllib import parse
-from urllib.parse import quote_plus
-import json
 from retry import retry
-from datetime import date
+from urllib.parse import quote_plus
 
-from project.server.main.logger import get_logger
-from project.server.main.utils_swift import upload_object
-from project.server.main.parse import parse_hal, get_aurehal_from_OS
 from project.server.main.aurehal import harvest_and_save_aurehal
+from project.server.main.logger import get_logger
+from project.server.main.parse import get_aurehal_from_OS, parse_hal
+from project.server.main.utils_swift import get_objects_by_prefix, upload_object
 
 logger = get_logger(__name__)
 
@@ -174,3 +172,25 @@ def insert_data(collection_name, output_file):
     delta = end - start
     logger.debug(f'Mongoimport done in {delta}')
     ## mongo done
+
+
+def load_collection_from_object_storage(collection_name: str) -> None:
+    # 1. Drop mongo collection
+    logger.debug(f'dropping {collection_name} collection before insertion')
+    myclient = pymongo.MongoClient('mongodb://mongo:27017/')
+    myclient['hal'][collection_name].drop()
+    # 2. Collect all files from Object Storage
+    publications = get_objects_by_prefix(container='hal', prefix=f'{collection_name}/parsed/hal_parsed')
+    # 3. Extract oa_details from publications
+    oa_details_data = []
+    for publication in publications:
+        result = {
+            'hal_id': publication.get('hal_id'),
+            'oa_details': publication.get('oa_details')
+        }
+        oa_details_data.append(result)
+    # 4. Save it into mongo collection
+    current_file_oa_details = f'hal_oa_details.json'
+    json.dump(oa_details_data, open(current_file_oa_details, 'w'))
+    insert_data(collection_name=collection_name, output_file=current_file_oa_details)
+    return
