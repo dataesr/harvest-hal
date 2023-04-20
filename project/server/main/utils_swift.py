@@ -47,7 +47,7 @@ def get_connection() -> swiftclient.Connection:
 
 
 @retry(delay=2, tries=50)
-def upload_object(container: str, source: str, target:str) -> str:
+def upload_object(container: str, source: str, target: str) -> str:
     logger.debug(f'Uploading {source} in {container} as {target}')
     cmd = init_cmd + f' upload {container} {source} --object-name {target}' \
                      f' --segment-size 1048576000 --segment-threads 100'
@@ -61,29 +61,29 @@ def download_object(container: str, filename: str, out: str) -> None:
     cmd = init_cmd + f' download {container} {filename} -o {out}'
     os.system(cmd)
 
+
 @retry(delay=2, tries=50)
 def get_objects(container: str, path: str) -> list:
     try:
         connection = get_connection()
-        df = pd.read_json(BytesIO(connection.get_object(container, path)[1]), compression='gzip')
+        df = pd.read_json(BytesIO(connection.get_object(
+            container, path)[1]), compression='gzip')
     except:
         df = pd.DataFrame([])
     return df.to_dict('records')
 
+
 @retry(delay=2, tries=50)
-def get_objects_by_prefix(container: str, prefix: str) -> list:
-    logger.debug(f'Retrieving object from container {container} and prefix {prefix}')
-    objects = []
+def get_paths_by_prefix(container: str, prefix: str) -> list:
+    logger.debug(
+        f'Retrieving paths from container {container} and prefix {prefix}')
     marker = None
     keep_going = True
+    filenames = []
     while keep_going:
         connection = get_connection()
-        content = connection.get_container(container=container, marker=marker, prefix=prefix)[1]
-        filenames = [file['name'] for file in content]
-        objects += [get_objects(container=container, path=filename) for filename in filenames]
+        content = connection.get_container(
+            container=container, marker=marker, prefix=prefix)[1]
+        filenames += [file['name'] for file in content]
         keep_going = len(content) == SWIFT_SIZE
-        if len(content) > 0:
-            marker = content[-1]['name']
-            logger.debug(f'Now {len(objects)} objects and counting')
-    flat_list = [item for sublist in objects for item in sublist]
-    return flat_list
+    return filenames
