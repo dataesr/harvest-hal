@@ -82,6 +82,7 @@ def parse_hal(notice, aurehal, snapshot_date):
     res['sources'] = ['HAL']
     if isinstance(notice.get('doiId_s'), str):
         res['doi'] = notice.get('doiId_s').lower().strip()
+        res['doi_in_hal'] = notice.get('doiId_s').lower().strip()
     external_ids = []
     if isinstance(notice.get('halId_s'), str):
         external_ids.append({'id_type': 'hal_id', 'id_value': notice.get('halId_s')})
