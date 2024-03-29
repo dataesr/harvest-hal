@@ -208,6 +208,10 @@ def parse_hal(notice, aurehal, snapshot_date):
     # PUBLISHER
     if isinstance(notice.get('journalPublisher_s'), str):
         res['publisher'] = notice.get('journalPublisher_s').strip()
+    
+    # JOURNAL
+    if isinstance(notice.get('journalTitle_s'), str):
+        res['journal_name'] = notice.get('journalTitle_s').strip()
    
     # ISSN
     journal_issns = []
