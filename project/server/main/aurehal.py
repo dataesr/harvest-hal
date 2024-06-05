@@ -77,11 +77,11 @@ def parse_author(elt, hal_idref):
     if isinstance(elt.get('emailDomain_s'), str):
         author['email_domain'] = elt.get('emailDomain_s').strip()
         
-    if isinstance(elt.get('idrefId_s'), str):
-        author['idref'] = elt.get('idrefId_s').strip().split('/')[-1]
+    if isinstance(elt.get('idrefId_s'), list) and len(elt.get('idrefId_s')) > 0:
+        author['idref'] = elt.get('idrefId_s')[0].strip().split('/')[-1]
         
-    if isinstance(elt.get('orcidId_s'), str):
-        author['orcid'] = elt.get('orcidId_s').strip().split('/')[-1]
+    if isinstance(elt.get('orcidId_s'), list) and len(elt.get('orcidId_s')) > 0:
+        author['orcid'] = elt.get('orcidId_s')[0].strip().split('/')[-1]
     
     return author
 
