@@ -1,2 +1,5 @@
-notebooks/*
+.idea
+.mypy*
 .vscode
+notebooks/*
+venv
