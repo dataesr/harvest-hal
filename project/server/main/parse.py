@@ -260,6 +260,10 @@ def parse_hal(notice, aurehal, snapshot_date):
         res['has_grant'] = True
     else:
         res['has_grant'] = False
+
+    ### infrastructure IR
+    if isinstance(notice.get('irThesaurusId_s'), list):
+        res['infrastructures'] = [{'id': g} for g in notice.get('irThesaurusId_s')] 
     
     ## OA #####
     oa_details = {}

@@ -1,6 +1,5 @@
+DOCKER_IMAGE_NAME=ghcr.io/dataesr/harvest-hal
 CURRENT_VERSION=$(shell cat project/__init__.py | cut -d "'" -f 2)
-DOCKER_IMAGE_NAME=dataesr/harvest-hal
-GHCR_IMAGE_NAME=ghcr.io/$(DOCKER_IMAGE_NAME)
 
 docker-build:
 	@echo Building a new docker image
@@ -9,10 +8,7 @@ docker-build:
 
 docker-push:
 	@echo Pushing a new docker image
-	docker tag $(DOCKER_IMAGE_NAME) $(GHCR_IMAGE_NAME):$(CURRENT_VERSION)
-	docker tag $(DOCKER_IMAGE_NAME) $(GHCR_IMAGE_NAME):latest
-	docker push $(GHCR_IMAGE_NAME):$(CURRENT_VERSION)
-	docker push $(GHCR_IMAGE_NAME):latest
+	docker push -a $(DOCKER_IMAGE_NAME)
 	@echo Docker image pushed
 
 install:
