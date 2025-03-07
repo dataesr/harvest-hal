@@ -265,6 +265,10 @@ def parse_hal(notice, aurehal, snapshot_date):
     if isinstance(notice.get('irThesaurusId_s'), list):
         res['infrastructures'] = [{'id': g} for g in notice.get('irThesaurusId_s')] 
     
+    ### SWHID
+    if isinstance(notice.get('swhidId_s'), list):
+        res['swhid'] = [{'swhid': g} for g in notice.get('swhidId_s')] 
+    
     ## OA #####
     oa_details = {}
     is_oa = False
