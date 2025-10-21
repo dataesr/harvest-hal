@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+from retry import retry
 from SPARQLWrapper import SPARQLWrapper, JSON
 
 from project.server.main.utils_swift import upload_object, download_object
@@ -32,6 +33,7 @@ def clean_json(elt):
             del elt[f]
     return elt
 
+@retry(delay=2, tries=5)
 def add_data(data, uri_prefix, target_index, target_id):
     QUERY_END = f"'{uri_prefix}'))" + "}"
     query = QUERY_START+QUERY_END
