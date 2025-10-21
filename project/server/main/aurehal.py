@@ -43,6 +43,12 @@ def parse_aurehal(elt, aurehal_type, hal_idref):
 def parse_author(elt, hal_idref):
     author = {}
     author['hal_docid'] = str(elt['docid'])
+    person_id = author['hal_docid'].split('-')[1]
+    if person_id == "0":
+        person_id = None
+    if isinstance(elt.get('person_i'), int):
+        author['person_id'] = str(elt['person_i'])
+    assert(person_id == author.get('person_id'))
     
     if isinstance(elt.get('firstName_s'), str):
         author['first_name'] = elt.get('firstName_s').strip()
@@ -120,12 +126,15 @@ def parse_structure(elt):
     return affiliation
 
 def create_docid_map(data, aurehal_type, hal_idref):
+    # for persons, ids look like "45004-175736" but the last part (person_id) are also unique, so we store both
     docid_map = {}
     parsed_data = []
     for d in data:
         docids = [d['docid']]
         if isinstance(d.get('aliasDocid_i'), list):
-            docids += d.get('aliasDocid_i')
+            docids += [str(k) for k in d.get('aliasDocid_i')]
+        if isinstance(d.get('person_id'), str):
+            docids.append(d['person_id'])
         docids = list(set(docids))
         parsed_elt = parse_aurehal(d, aurehal_type, hal_idref)
         parsed_data.append(parsed_elt)

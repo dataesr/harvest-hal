@@ -155,8 +155,8 @@ def parse_hal(notice, aurehal, snapshot_date):
     authors_affiliations = {}
     if isinstance(notice.get('authIdHasStructure_fs'), list):
         for facet in notice.get('authIdHasStructure_fs'):
-            authorId = str(facet.split('JoinSep')[0].split('FacetSep')[0]).replace('_', '')
             structId = str(facet.split('JoinSep')[1].split('FacetSep')[0]).replace('_', '')
+            authorId = str(facet.split('JoinSep')[0].split('FacetSep')[0]).replace('_', '')
             if authorId not in authors_affiliations:
                 authors_affiliations[authorId] = []
             if structId in aurehal.get('structure', {}):
@@ -183,16 +183,20 @@ def parse_hal(notice, aurehal, snapshot_date):
         #for authorId in notice.get('authId_i'):
         for ix_aut, authorId in enumerate(notice.get('authIdFormPerson_s')):
             authorIdStr = str(authorId)
-            if authorIdStr in aurehal.get('author', {}):
+            personIdStr = authorIdStr.split('-')[1] #person_id aka idHAL_i even idHAL not always in the aurehal data??
+            author = {}
+            if personIdStr in aurehal.get('author', {}):
+                author = aurehal['author'][personIdStr]
+            elif authorIdStr in aurehal.get('author', {}):
                 author = aurehal['author'][authorIdStr]
-                if authorIdStr in authors_affiliations:
-                    author['affiliations'] = authors_affiliations[authorIdStr]
-                authors.append(author)
             else:
                 logger.debug(f'author ;{authorIdStr}; not in aurehal ?; type: {type(authorIdStr)}')
                 if isinstance(authorIdStr, str):
                     author = {'hal_docid': authorIdStr, 'first_name': first_names[ix_aut], 'last_name': last_names[ix_aut], 'full_name': full_names[ix_aut]}
-                    authors.append(author)
+            if author:
+                if authorIdStr in authors_affiliations:
+                    author['affiliations'] = authors_affiliations[authorIdStr]
+            authors.append(author)
     if authors:
         #nb_author = len(notice.get('authId_i'))
         nb_author = len(notice.get('authIdFormPerson_s'))
