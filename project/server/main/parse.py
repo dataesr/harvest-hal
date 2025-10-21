@@ -112,7 +112,7 @@ def parse_hal(notice, aurehal, snapshot_date):
         affiliations = []
         for s in notice.get('structId_i'):
             structId = str(s)
-            if structId in aurehal['structure']:
+            if structId in aurehal.get('structure', {}):
                 if aurehal['structure'][structId] not in affiliations:
                     current_structure = aurehal['structure'][structId]
                     current_structure['structId'] = structId
@@ -159,27 +159,40 @@ def parse_hal(notice, aurehal, snapshot_date):
             structId = str(facet.split('JoinSep')[1].split('FacetSep')[0]).replace('_', '')
             if authorId not in authors_affiliations:
                 authors_affiliations[authorId] = []
-            if structId in aurehal['structure']:
+            if structId in aurehal.get('structure', {}):
                 authors_affiliations[authorId].append(aurehal['structure'][structId])
             else:
                 logger.debug(f'from authors : struct ;{structId}; not in aurehal; type: {type(structId)};facet {facet}')
 
     authors = []
+    full_names, last_names, first_names = [], [], []
+    if isinstance(notice.get('authFullName_s'), list):
+        full_names = notice.get('authFullName_s')
+    if isinstance(notice.get('authFirstName_s'), list):
+        first_names = notice.get('authFirstName_s')
+    if isinstance(notice.get('authLastName_s'), list):
+        last_names = notice.get('authLastName_s')
+    assert(len(full_names) == len(first_names))
+    assert(len(full_names) == len(last_names))
     nb_auth_quality = 0
     if isinstance(notice.get('authQuality_s'), list):
         nb_auth_quality = len(notice.get('authQuality_s'))
     #if isinstance(notice.get('authId_i'), list):
     if isinstance(notice.get('authIdFormPerson_s'), list):
+        assert(len(full_names) == len(notice.get('authIdFormPerson_s')))
         #for authorId in notice.get('authId_i'):
-        for authorId in notice.get('authIdFormPerson_s'):
+        for ix_aut, authorId in enumerate(notice.get('authIdFormPerson_s')):
             authorIdStr = str(authorId)
-            if authorIdStr in aurehal['author']:
+            if authorIdStr in aurehal.get('author', {}):
                 author = aurehal['author'][authorIdStr]
                 if authorIdStr in authors_affiliations:
                     author['affiliations'] = authors_affiliations[authorIdStr]
                 authors.append(author)
             else:
-                logger.debug(f'author ;{authorIdStr}; not in aureal ?; type: {type(authorIdStr)}')
+                logger.debug(f'author ;{authorIdStr}; not in aurehal ?; type: {type(authorIdStr)}')
+                if isinstance(authorIdStr, str):
+                    author = {'hal_docid': authorIdStr, 'first_name': first_names[ix_aut], 'last_name': last_names[ix_aut], 'full_name': full_names[ix_aut]}
+                    authors.append(author)
     if authors:
         #nb_author = len(notice.get('authId_i'))
         nb_author = len(notice.get('authIdFormPerson_s'))
