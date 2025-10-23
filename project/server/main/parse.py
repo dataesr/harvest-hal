@@ -172,14 +172,24 @@ def parse_hal(notice, aurehal, snapshot_date):
         first_names = notice.get('authFirstName_s')
     if isinstance(notice.get('authLastName_s'), list):
         last_names = notice.get('authLastName_s')
-    assert(len(full_names) == len(first_names))
-    assert(len(full_names) == len(last_names))
+    has_names_detail = False
+    if (len(full_names) == len(first_names)) and (len(full_names) == len(last_names)):
+        has_names_detail = True
+    else:
+        logger.debug(f"no name details for {res['hal_id']}")
+        assert(len(full_names) >= len(first_names))
+        assert(len(full_names) >= len(last_names))
+
     nb_auth_quality = 0
     if isinstance(notice.get('authQuality_s'), list):
         nb_auth_quality = len(notice.get('authQuality_s'))
     #if isinstance(notice.get('authId_i'), list):
     if isinstance(notice.get('authIdFormPerson_s'), list):
-        assert(len(full_names) == len(notice.get('authIdFormPerson_s')))
+        has_full_name = False
+        if(len(full_names) == len(notice.get('authIdFormPerson_s'))):
+            has_full_name = True
+        else:
+            logger.debug(f"no full name for {res['hal_id']}")
         #for authorId in notice.get('authId_i'):
         for ix_aut, authorId in enumerate(notice.get('authIdFormPerson_s')):
             authorIdStr = str(authorId)
@@ -192,7 +202,12 @@ def parse_hal(notice, aurehal, snapshot_date):
             else:
                 logger.debug(f'author ;{authorIdStr}; not in aurehal ?; type: {type(authorIdStr)}')
                 if isinstance(authorIdStr, str):
-                    author = {'hal_docid': authorIdStr, 'first_name': first_names[ix_aut], 'last_name': last_names[ix_aut], 'full_name': full_names[ix_aut]}
+                    author = {'hal_docid': authorIdStr}
+                    if has_full_name:
+                        author['full_name'] = full_names[ix_aut]
+                    if has_names_detail:
+                        author['first_name'] = first_names[ix_aut]
+                        author['last_name'] = last_names[ix_aut]
             if author:
                 if authorIdStr in authors_affiliations:
                     author['affiliations'] = authors_affiliations[authorIdStr]
