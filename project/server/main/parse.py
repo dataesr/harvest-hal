@@ -88,7 +88,7 @@ def parse_hal(notice, aurehal, snapshot_date):
         external_ids.append({'id_type': 'hal_id', 'id_value': notice.get('halId_s')})
         res['hal_id'] = notice.get('halId_s')
     if isinstance(notice.get('nntId_s'), str):
-        external_ids.append({'id_type': 'nnt_id', 'id_value': notice.get('nntId_s')})
+        external_ids.append({'id_type': 'nnt_id', 'id_value': notice.get('nntId_s').replace('-', '').replace(' ', '').replace('_', '')})
         res['nnt_id'] = notice.get('nntId_s')
     if external_ids:
         res['external_ids'] = external_ids
