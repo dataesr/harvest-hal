@@ -153,7 +153,10 @@ def harvest_and_save_aurehal(collection_name, aurehal_type):
     os.system(f'rm -rf {current_file}.gz')
     hal_idref = {}
     if aurehal_type == 'author':
-        update_vip() 
+        try:
+            update_vip() 
+        except:
+            logger.debug('error in vip update!!!')
         download_object('misc', 'vip.jsonl', f'vip.jsonl')
         df_vip = pd.read_json('vip.jsonl', lines=True)
         vips = df_vip.to_dict(orient='records')

@@ -70,7 +70,8 @@ def update_vip():
     data = {}
     for e in input_idrefs:
         data[e['id']] = e
-    add_data(data, 'https://data.archives-ouvertes.fr', 4, 'id_hal_s')
+    #add_data(data, 'https://data.archives-ouvertes.fr', 4, 'id_hal_s')
+    add_data(data, 'https://data.hal.science', 4, 'id_hal_s')
     add_data(data, 'https://orcid.org', 3, 'orcid')
     add_data(data, 'https://univ-droit.fr', 4, 'univ-droit')
     vip = [clean_json(v) for v in list(data.values())]
